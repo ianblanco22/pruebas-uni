@@ -1,13 +1,21 @@
 package co.com.semillero.exception;
 
+import lombok.Getter;
+
 public class ErrorResponse extends Throwable {
 
+    @Getter
     private String message;
     private String stackTrace;
 
     public ErrorResponse(Exception e) {
-        this.message = e.getMessage();
-        this.stackTrace = convertStackTraceToString(e); // Lógica local
+        if (e != null){
+            this.message = e.getMessage();
+            this.stackTrace = convertStackTraceToString(e);
+        } else {
+            this.message = null;
+            this.stackTrace = ""; // Manejo para excepciones nulas
+        }
     }
 
     private String convertStackTraceToString(Throwable throwable) {
@@ -15,10 +23,6 @@ public class ErrorResponse extends Throwable {
         java.io.PrintWriter pw = new java.io.PrintWriter(sw);
         throwable.printStackTrace(pw);
         return sw.toString();
-    }
-
-    public String getMessage() {
-        return message;
     }
 
     public void setMessage(String message) {

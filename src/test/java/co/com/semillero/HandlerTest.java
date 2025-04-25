@@ -30,6 +30,9 @@ class HandlerTest {
 
     @BeforeEach
     void setUp() {
+        System.setProperty("aws.accessKeyId", "your_access_key");
+        System.setProperty("aws.secretAccessKey", "your_secret_key");
+        System.setProperty("aws.region", "us-east-1");
         MockitoAnnotations.openMocks(this);
         handler = spy(new Handler());
         handler.dynamoClient = dynamoClient;
