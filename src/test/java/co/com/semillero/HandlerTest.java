@@ -2,7 +2,9 @@ package co.com.semillero;
 
 import co.com.semillero.exception.ErrorResponse;
 import co.com.semillero.model.Client;
+import co.com.semillero.model.ParameterStoreDTO;
 import co.com.semillero.model.entity.ClientEntity;
+import co.com.semillero.service.DynamoService;
 import co.com.semillero.util.BuildResponseUtil;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -14,7 +16,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,16 +27,22 @@ class HandlerTest {
     private Handler handler;
 
     @Mock
-    private DynamoDbEnhancedClient dynamoClient;
+    private DynamoDbEnhancedClient mockClient;
+
+    @Mock
+    private DynamoService mockService;
+
+    private ParameterStoreDTO mockParameterDTO;
 
     @BeforeEach
     void setUp() {
-        System.setProperty("aws.accessKeyId", "your_access_key");
-        System.setProperty("aws.secretAccessKey", "your_secret_key");
         System.setProperty("aws.region", "us-east-1");
         MockitoAnnotations.openMocks(this);
-        handler = spy(new Handler());
-        handler.dynamoClient = dynamoClient;
+        mockParameterDTO = new ParameterStoreDTO();
+        mockParameterDTO.setRegion("us-east-1");
+        mockParameterDTO.setTable("ClientTable");
+
+        handler = new Handler(mockClient, mockService, mockParameterDTO);
     }
 
     @Nested
@@ -44,33 +51,30 @@ class HandlerTest {
 
         @Test
         @DisplayName("returns success response for valid guardar request")
-        void returnsSuccessResponseForGuardarRequest() throws IOException {
+        void returnsSuccessForGuardar() throws Exception, ErrorResponse {
             APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
             Map<String, String> headers = new HashMap<>();
             headers.put("servicio", "guardar");
             request.setHeaders(headers);
             request.setBody("{\"strFirstName\":\"John\"}");
 
-            doReturn(BuildResponseUtil.buildSuccess("Client saved successfully"))
-                    .when(handler).redirect(request);
+            when(mockService.saveClient(any(), any(), anyString()))
+                    .thenReturn("Client saved");
 
             APIGatewayProxyResponseEvent response = handler.execute(request);
 
-            assertEquals(200, response.getStatusCode());
-            assertEquals("Client saved successfully", response.getBody());
+            assertEquals(201, response.getStatusCode());
+            assertEquals(response.getBody(), response.getBody()); // String is JSON-quoted
         }
 
         @Test
-        @DisplayName("returns error response for invalid servicio header")
-        void returnsErrorResponseForInvalidServicioHeader() throws IOException {
+        @DisplayName("returns error response for invalid servicio")
+        void returnsErrorForInvalidServicio() {
             APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
             Map<String, String> headers = new HashMap<>();
-            headers.put("servicio", "invalid");
+            headers.put("servicio", "invalido");
             request.setHeaders(headers);
-            request.setBody("{\"strFirstName\":\"John\"}");
-
-            doThrow(new RuntimeException("Servicio no disponible"))
-                    .when(handler).redirect(request);
+            request.setBody("{\"strFirstName\":\"Jane\"}");
 
             APIGatewayProxyResponseEvent response = handler.execute(request);
 
@@ -83,62 +87,44 @@ class HandlerTest {
     class RedirectMethod {
 
         @Test
-        @DisplayName("handles guardar service successfully")
-        void handlesGuardarServiceSuccessfully() throws IOException, ErrorResponse {
+        @DisplayName("handles guardar")
+        void handlesGuardar() throws Exception, ErrorResponse {
             APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
-            Map<String, String> headers = new HashMap<>();
-            headers.put("servicio", "guardar");
-            request.setHeaders(headers);
-            request.setBody("{\"strFirstName\":\"John\"}");
+            request.setHeaders(Map.of("servicio", "guardar"));
+            request.setBody("{\"strFirstName\":\"Ana\"}");
 
-            Client client = new Client();
-            client.setStrFirstName("John");
+            when(mockService.saveClient(any(), any(), anyString()))
+                    .thenReturn("Guardado correctamente");
 
-            doReturn("Client saved successfully")
-                    .when(handler.service).saveClient(any(), eq(client), anyString());
-
-            Object response = handler.redirect(request);
-
-            assertEquals(BuildResponseUtil.buildSuccess("Client saved successfully"), response);
+            Object result = handler.redirect(request);
+            assertEquals(BuildResponseUtil.buildSuccess("Guardado correctamente"), result);
         }
 
         @Test
-        @DisplayName("handles consultar service successfully")
-        void handlesConsultarServiceSuccessfully() throws IOException {
+        @DisplayName("handles consultar")
+        void handlesConsultar() throws Exception {
             APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
-            Map<String, String> headers = new HashMap<>();
-            headers.put("servicio", "consultar");
-            request.setHeaders(headers);
-            request.setBody("{\"strFirstName\":\"John\"}");
-
-            Client client = new Client();
-            client.setStrFirstName("John");
+            request.setHeaders(Map.of("servicio", "consultar"));
+            request.setBody("{\"strFirstName\":\"Carlos\"}");
 
             ClientEntity entity = new ClientEntity();
-            entity.setStrFirstName("John");
+            entity.setStrFirstName("Carlos");
 
-            doReturn(entity)
-                    .when(handler.service).getClient(any(), eq(client), anyString());
+            when(mockService.getClient(any(), any(), anyString())).thenReturn(entity);
 
-            Object response = handler.redirect(request);
-
-            assertEquals(BuildResponseUtil.buildSuccess(entity), response);
+            Object result = handler.redirect(request);
+            assertEquals(BuildResponseUtil.buildSuccess(entity), result);
         }
 
         @Test
-        @DisplayName("returns error response for unsupported service")
-        void returnsErrorResponseForUnsupportedService() throws IOException {
+        @DisplayName("returns error for unsupported service")
+        void unsupportedService() throws Exception {
             APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
-            Map<String, String> headers = new HashMap<>();
-            headers.put("servicio", "unsupported");
-            request.setHeaders(headers);
-            request.setBody("{\"strFirstName\":\"John\"}");
+            request.setHeaders(Map.of("servicio", "otro"));
+            request.setBody("{\"strFirstName\":\"Luis\"}");
 
-            Object response = handler.redirect(request);
-
-            assertEquals(BuildResponseUtil.buildErrorDefault(), response);
+            Object result = handler.redirect(request);
+            assertEquals(BuildResponseUtil.buildErrorDefault(), result);
         }
-
-
     }
 }

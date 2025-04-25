@@ -6,7 +6,6 @@ import co.com.semillero.model.Client;
 import co.com.semillero.model.ParameterStoreDTO;
 import co.com.semillero.model.entity.ClientEntity;
 import co.com.semillero.repository.DynamoMapperRepository;
-import co.com.semillero.repository.DynamoRepository;
 import co.com.semillero.repository.ParameterStoreRepository;
 import co.com.semillero.service.DynamoService;
 import co.com.semillero.util.BuildResponseUtil;
@@ -16,8 +15,6 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import io.micronaut.core.annotation.Introspected;
 import io.micronaut.function.aws.MicronautRequestHandler;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 import java.io.IOException;
@@ -26,19 +23,32 @@ import java.io.IOException;
 @Introspected
 public class Handler extends MicronautRequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
-    //private static final Logger logger = LoggerFactory.getLogger(ClientMapper.class);
+    ParameterStoreRepository parameterRepository;
+    ParameterStoreDTO parameterDTO;
+    DynamoMapperRepository dynamoMapperRepository;
+    DynamoDbEnhancedClient dynamoClient;
+    DynamoService service;
 
-    ParameterStoreRepository parameterRepository = new ParameterStoreRepository();
-    ParameterStoreDTO parameterDTO = parameterRepository.getParameter();
-    DynamoMapperRepository dynamoMapperRepository = new DynamoMapperRepository(parameterDTO.getRegion());
-    DynamoDbEnhancedClient dynamoClient = dynamoMapperRepository.getClient();
-    DynamoService service = new DynamoService();
+    // Constructor por defecto para producción
+    public Handler() {
+        this.parameterRepository = new ParameterStoreRepository();
+        this.parameterDTO = parameterRepository.getParameter();
+        this.dynamoMapperRepository = new DynamoMapperRepository(parameterDTO.getRegion());
+        this.dynamoClient = dynamoMapperRepository.getClient();
+        this.service = new DynamoService();
+    }
+
+    // Constructor para pruebas unitarias (inyección de mocks)
+    public Handler(DynamoDbEnhancedClient client, DynamoService service, ParameterStoreDTO parameterDTO) {
+        this.dynamoClient = client;
+        this.service = service;
+        this.parameterDTO = parameterDTO;
+    }
 
     @Override
     public APIGatewayProxyResponseEvent execute(APIGatewayProxyRequestEvent input) {
         try {
             log.info("parameterStore en el execute: {} ", Util.object2String(parameterDTO));
-
             return BuildResponseUtil.buildSuccess(redirect(input));
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -47,31 +57,26 @@ public class Handler extends MicronautRequestHandler<APIGatewayProxyRequestEvent
 
     public Object redirect(APIGatewayProxyRequestEvent input) throws IOException {
         try {
-
             log.info("Iniciando ejecución Lambda...");
-            // Headers esperados
-
             String servicio = input.getHeaders().get("servicio");
 
-            log.info("body:"+input.getBody());
+            log.info("body: {}", input.getBody());
             log.info("Servicio: {}, Tabla: {}", servicio, parameterDTO.getTable());
 
             Client client = (Client) Util.string2object(input.getBody(), Client.class);
 
-            // Redirección por servicio
-            if ("guardar".equals(servicio)) {
-                log.info("objeto client: {}", Util.object2String(client));
-                log.info("tabla:",parameterDTO.getTable());
-                log.info("cliente nombre:",client.getStrFirstName());
-                log.info("ParameterStoreDTO:",Util.object2String(parameterDTO));
+            switch (servicio) {
+                case "guardar":
+                    log.info("objeto client: {}", Util.object2String(client));
+                    String msg = service.saveClient(dynamoClient, client, parameterDTO.getTable());
+                    return BuildResponseUtil.buildSuccess(msg);
 
-                String msg = service.saveClient(dynamoClient, client, parameterDTO.getTable());
-                return BuildResponseUtil.buildSuccess(msg);
-            } else if ("consultar".equals(servicio)) {
-                ClientEntity entity = service.getClient(dynamoClient, client, parameterDTO.getTable());
-                return BuildResponseUtil.buildSuccess(entity);
-            } else {
-                throw new RuntimeException("Servicio no disponible");
+                case "consultar":
+                    ClientEntity entity = service.getClient(dynamoClient, client, parameterDTO.getTable());
+                    return BuildResponseUtil.buildSuccess(entity);
+
+                default:
+                    throw new RuntimeException("Servicio no disponible");
             }
 
         } catch (ErrorResponse e) {
