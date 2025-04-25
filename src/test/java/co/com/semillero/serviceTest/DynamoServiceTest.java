@@ -1,5 +1,6 @@
 package co.com.semillero.serviceTest;
 
+import co.com.semillero.model.entity.KeyEntity;
 import co.com.semillero.exception.ErrorResponse;
 import co.com.semillero.mapper.ClientMapper;
 import co.com.semillero.model.Client;
@@ -77,11 +78,13 @@ class DynamoServiceTest {
         void shouldRetrieveClientSuccessfully() {
             Client client = mock(Client.class);
             ClientEntity clientEntity = mock(ClientEntity.class);
+            KeyEntity keyEntity = mock(KeyEntity.class); // Mock de KeyEntity
             String table = "testTable";
             String id = "key_type_key_id";
 
-            when(client.getKey().getStrTypeLlave()).thenReturn("key_type");
-            when(client.getKey().getStrIdLlave()).thenReturn("key_id");
+            when(client.getKey()).thenReturn(keyEntity); // Configura el mock para devolver keyEntity
+            when(keyEntity.getStrTypeLlave()).thenReturn("key_type");
+            when(keyEntity.getStrIdLlave()).thenReturn("key_id");
             when(dynamoRepository.load(id, id, dynamoDbEnhancedClient, table, ClientEntity.SCHEMA_CLIENT))
                     .thenReturn(clientEntity);
 
@@ -95,11 +98,13 @@ class DynamoServiceTest {
         @DisplayName("Should return null when client not found")
         void shouldReturnNullWhenClientNotFound() {
             Client client = mock(Client.class);
+            KeyEntity keyEntity = mock(KeyEntity.class); // Mock de KeyEntity
             String table = "testTable";
             String id = "key_type_key_id";
 
-            when(client.getKey().getStrTypeLlave()).thenReturn("key_type");
-            when(client.getKey().getStrIdLlave()).thenReturn("key_id");
+            when(client.getKey()).thenReturn(keyEntity); // Configura el mock para devolver keyEntity
+            when(keyEntity.getStrTypeLlave()).thenReturn("key_type");
+            when(keyEntity.getStrIdLlave()).thenReturn("key_id");
             when(dynamoRepository.load(id, id, dynamoDbEnhancedClient, table, ClientEntity.SCHEMA_CLIENT))
                     .thenReturn(null);
 

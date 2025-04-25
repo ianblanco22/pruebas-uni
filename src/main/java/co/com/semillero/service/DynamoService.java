@@ -26,10 +26,15 @@ public class DynamoService implements IDynamoService {
         log.info("cliente nombre:",dto.getStrFirstName());
         log.info("Client: {}", Util.object2String(dto));
 
-        ClientEntity entity = clientMapper.clientMapper(dto);
+        try {
+            ClientEntity entity = clientMapper.clientMapper(dto);
+            dynamoRepository.save(entity, client, table, ClientEntity.SCHEMA_CLIENT);
+            return "Cliente guardado correctamente";
 
-        dynamoRepository.save(entity, client, table, ClientEntity.SCHEMA_CLIENT);
-        return "Cliente guardado correctamente";
+        } catch (RuntimeException e) {
+            throw new ErrorResponse(new Exception("Error al guardar el cliente", e));
+        }
+
     }
 
     @Override
