@@ -20,7 +20,7 @@ class BuildResponseUtilTest {
         APIGatewayProxyResponseEvent result = BuildResponseUtil.buildSuccess(response);
 
         assertNotNull(result);
-        assertEquals(200, result.getStatusCode());
+        assertEquals(201, result.getStatusCode());
         assertTrue(result.getBody().contains("\"key\":\"value\""));
         assertTrue(result.getHeaders().containsKey("Content-Type"));
     }
