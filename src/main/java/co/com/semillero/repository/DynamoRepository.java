@@ -40,7 +40,16 @@ public class DynamoRepository {
 
     //cargar una entidad desde DynamoDB
     public <T> T load(String pk, String sk, DynamoDbEnhancedClient client, String tableName, TableSchema<T> schema) {
-        DynamoDbTable<T> table = client.table(tableName, schema);
-        return table.getItem(r -> r.key(k -> k.partitionValue(pk).sortValue(sk)));
+        log.info("Inicia carga desde DynamoDB - Tabla: {} - PartitionKey: {} - SortKey: {}", tableName, pk, sk);
+        try {
+            DynamoDbTable<T> table = client.table(tableName, schema);
+            return table.getItem(r -> r.key(k -> k.partitionValue(pk).sortValue(sk)));
+
+        } catch (Exception e) {
+            StringWriter errors = new StringWriter();
+            e.printStackTrace(new PrintWriter(errors));
+            log.error("Error en load: {}", errors);
+            return null;
+        }
     }
 }
