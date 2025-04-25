@@ -12,6 +12,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
 
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,23 +71,40 @@ class DynamoRepositoryTest {
     @Nested
     @DisplayName("load")
     class Load {
-
         @Test
-        @DisplayName("Should load entity successfully when valid keys are provided")
-        void shouldLoadEntitySuccessfullyWhenValidKeysAreProvided() {
-            String pk = "validPartitionKey";
-            String sk = "validSortKey";
+        @DisplayName("Should load entity successfully")
+        void shouldLoadEntitySuccessfully() {
+            String pk = "partitionKey";
+            String sk = "sortKey";
             String tableName = "testTable";
             TableSchema<Object> schema = mock(TableSchema.class);
             Object expectedEntity = new Object();
 
             when(dynamoDbEnhancedClient.table(tableName, schema)).thenReturn(dynamoDbTable);
-            when(dynamoDbTable.getItem(any(Function.class))).thenReturn(expectedEntity);
+            doAnswer(invocation -> {
+                Consumer<GetItemEnhancedRequest.Builder> consumer = invocation.getArgument(0);
+                GetItemEnhancedRequest.Builder builder = GetItemEnhancedRequest.builder();
+                consumer.accept(builder);
+                GetItemEnhancedRequest request = builder.build();
+
+                // Construcción de la clave esperada
+                var expectedKey = software.amazon.awssdk.enhanced.dynamodb.Key.builder()
+                        .partitionValue(pk)
+                        .sortValue(sk)
+                        .build();
+
+                // Comparar las claves
+                if (request.key().equals(expectedKey)) {
+                    return expectedEntity;
+                }
+                return null;
+            }).when(dynamoDbTable).getItem(any(Consumer.class));
 
             Object result = dynamoRepository.load(pk, sk, dynamoDbEnhancedClient, tableName, schema);
 
             assertEquals(expectedEntity, result);
         }
+
 
         @Test
         @DisplayName("Should return null when entity not found")
