@@ -12,6 +12,8 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
 
+import java.util.function.Function;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -70,16 +72,16 @@ class DynamoRepositoryTest {
     class Load {
 
         @Test
-        @DisplayName("Should load entity successfully")
-        void shouldLoadEntitySuccessfully() {
-            String pk = "partitionKey";
-            String sk = "sortKey";
+        @DisplayName("Should load entity successfully when valid keys are provided")
+        void shouldLoadEntitySuccessfullyWhenValidKeysAreProvided() {
+            String pk = "validPartitionKey";
+            String sk = "validSortKey";
             String tableName = "testTable";
             TableSchema<Object> schema = mock(TableSchema.class);
             Object expectedEntity = new Object();
 
             when(dynamoDbEnhancedClient.table(tableName, schema)).thenReturn(dynamoDbTable);
-            when(dynamoDbTable.getItem(any(GetItemEnhancedRequest.class))).thenReturn(expectedEntity);
+            when(dynamoDbTable.getItem(any(Function.class))).thenReturn(expectedEntity);
 
             Object result = dynamoRepository.load(pk, sk, dynamoDbEnhancedClient, tableName, schema);
 
@@ -95,11 +97,27 @@ class DynamoRepositoryTest {
             TableSchema<Object> schema = mock(TableSchema.class);
 
             when(dynamoDbEnhancedClient.table(tableName, schema)).thenReturn(dynamoDbTable);
-            when(dynamoDbTable.getItem(any(GetItemEnhancedRequest.class))).thenReturn(null);
+            when(dynamoDbTable.getItem(any(Function.class))).thenReturn(null);
+
+            Object result = dynamoRepository.load(pk, sk, dynamoDbEnhancedClient, tableName, schema);
+
+            assertNull(result);
+        }
+        @Test
+        @DisplayName("Should log error and return null when exception occurs")
+        void shouldLogErrorAndReturnNullWhenExceptionOccurs() {
+            String pk = "partitionKey";
+            String sk = "sortKey";
+            String tableName = "testTable";
+            TableSchema<Object> schema = mock(TableSchema.class);
+
+            when(dynamoDbEnhancedClient.table(tableName, schema)).thenReturn(dynamoDbTable);
+            when(dynamoDbTable.getItem(any(Function.class))).thenThrow(new RuntimeException("DynamoDB error"));
 
             Object result = dynamoRepository.load(pk, sk, dynamoDbEnhancedClient, tableName, schema);
 
             assertNull(result);
         }
     }
+
 }
