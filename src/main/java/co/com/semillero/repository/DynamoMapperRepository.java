@@ -32,11 +32,16 @@ public class DynamoMapperRepository {
                                     ContainerCredentialsProvider.builder().build() : EnvironmentVariableCredentialsProvider.create())
                     .build();
 
-            enhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(client).build();
+            try {
+                enhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(client).build();
 
-            log.info("enhancedClient en getClient: {}", Util.object2String(enhancedClient));
+                log.info("enhancedClient en getClient: {}", Util.object2String(enhancedClient));
 
-            return enhancedClient;
+                return enhancedClient;
+            }catch (NullPointerException e) {
+                throw new NullPointerException("Client cannot be null");
+            }
+
         } catch (Exception e) {
             StringWriter errors = new StringWriter();
             e.printStackTrace(new PrintWriter(errors));
