@@ -1,6 +1,7 @@
 package co.com.semillero.repositoryTest;
 
 import co.com.semillero.constants.ParameterKey;
+import co.com.semillero.exception.ErrorResponse;
 import co.com.semillero.model.ParameterStoreDTO;
 import co.com.semillero.repository.ParameterStoreRepository;
 import co.com.semillero.util.ParameterStoreUtil;
@@ -65,7 +66,7 @@ class ParameterStoreRepositoryTest {
 
     @Test
     @DisplayName("Handles null response from ParameterStoreUtil gracefully")
-    void handlesNullResponseFromParameterStoreUtilGracefully() {
+    void handlesNullResponseFromParameterStoreUtilGracefully() throws ErrorResponse {
         try (MockedStatic<ParameterStoreUtil> mockedUtil = mockStatic(ParameterStoreUtil.class)) {
             mockedUtil.when(() -> ParameterStoreUtil.getParameters(ParameterKey.BASE_PATH)).thenReturn(null);
 

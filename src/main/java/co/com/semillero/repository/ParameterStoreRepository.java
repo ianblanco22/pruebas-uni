@@ -14,6 +14,9 @@ public class ParameterStoreRepository {
 
         Map<String, String> parameterSemillero = ParameterStoreUtil.getParameters(ParameterKey.BASE_PATH);
 
+        if (parameterSemillero == null) {
+            return new ParameterStoreDTO(); // Devuelve un objeto con valores nulos
+        }
         log.info("Parametro desde el parameterStoreRepository {} :",parameterSemillero);
 
         parameter.setTable(parameterSemillero.get(ParameterKey.NOMBRE_TABLA.getFullKey()));
