@@ -1,5 +1,4 @@
-package co.com.semillero.utils;
-import co.com.semillero.util.Util;
+package co.com.semillero.util;
 import com.amazonaws.services.lambda.runtime.events.models.dynamodb.AttributeValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
