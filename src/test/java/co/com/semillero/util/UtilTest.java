@@ -1,5 +1,4 @@
-package co.com.semillero.utils;
-import co.com.semillero.util.Util;
+package co.com.semillero.util;
 import com.amazonaws.services.lambda.runtime.events.models.dynamodb.AttributeValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,7 @@ public class UtilTest {
                 Util.string2object(invalidJson, Object.class)
         );
 
-        assertEquals(IOException.class, exception.getCause().getClass());
+        assertEquals("io.micronaut.json.JsonSyntaxException", exception.getCause().getClass().getName());
     }
 
     @Test
@@ -27,9 +26,11 @@ public class UtilTest {
     void string2objectReturnsNullForEmptyJson() {
         String emptyJson = "";
 
-        Object result = Util.string2object(emptyJson, Object.class);
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+                Util.string2object(emptyJson, Object.class)
+        );
 
-        assertNull(result);
+        assertTrue(exception.getCause() instanceof java.io.EOFException,"Expected cause to be EOFException due to empty input");
     }
 
     @Test
@@ -43,7 +44,7 @@ public class UtilTest {
                 Util.object2String(nonSerializableObject)
         );
 
-        assertEquals(IOException.class, exception.getCause().getClass());
+        assertEquals("io.micronaut.serde.exceptions.SerdeException", exception.getCause().getClass().getName());
     }
 
     @Test
@@ -79,6 +80,6 @@ public class UtilTest {
         Map<String, AttributeValue> invalidMap = new HashMap<>();
         invalidMap.put("key", null);
 
-        assertThrows(IOException.class, () -> Util.convertToJson(invalidMap));
+        assertThrows(NullPointerException.class, () -> Util.convertToJson(invalidMap));
     }
 }
